@@ -28,6 +28,7 @@
 import { useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 import DocumentGate from '@/components/DocumentGate'
 import MetadataDisplay from '@/components/MetadataDisplay'
 import TransactionTable from '@/components/TransactionTable'
@@ -50,144 +51,72 @@ export default function Home() {
   const [metadata, setMetadata] = useState<StatementMetadata | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   /**
    * Handle document upload and validation
    * PROMPT 1: DOCUMENT GATE
-   * For demo mode, loads sample statement when file dialog is opened
+   * Sends PDF to API for real parsing using unpdf library
    */
   const handleFileUpload = useCallback(async (file: File | null) => {
-    // If user cleared the file input, treat as no-op in demo
+    // If user cleared the file input, treat as no-op
     if (!file) {
       setIsLoading(false)
       return
     }
+
     setIsLoading(true)
+    setError(null)
     
     try {
-      // In production, this would parse the actual PDF
-      // For demo, load sample statement
-      const sampleMetadata: StatementMetadata = {
-        financialInstitution: 'First National Bank',
-        accountName: 'Business Checking Account',
-        accountNumberLastFour: '4567',
-        accountType: 'Checking',
-        currency: 'USD',
-        statementStartDate: '2024-01-01',
-        statementEndDate: '2024-01-31',
-        openingBalance: '5000.00',
-        closingBalance: '5847.50',
-        normalizedOpeningBalance: 5000.0,
-        normalizedClosingBalance: 5847.5,
-        totalDebits: '2500.00',
-        totalCredits: '3347.50',
+      // Create FormData for multipart upload
+      const formData = new FormData()
+      formData.append('file', file)
+
+      // Send to API for parsing
+      const response = await fetch('/api/parse', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to parse PDF')
       }
 
-      /**
-       * PROMPT 3: TRANSACTION EXTRACTION
-       * CRITICAL: Preserve FULL descriptions exactly as shown in PDF
-       * Never truncate, normalize, or modify descriptions
-       */
-      const sampleTransactions: Transaction[] = [
-        {
-          rowId: 'TXN001',
-          postedDate: '2024-01-02',
-          description:
-            'DEPOSIT - Customer Payment for Invoice #INV-2024-001 - ABC Corporation - Reference: PO-5678',
-          debit: null,
-          credit: '1500.00',
-          runningBalance: '6500.00',
-          normalizedDate: '2024-01-02',
-          normalizedAmount: 1500.0,
-          normalizedBalance: 6500.0,
-          isEdited: false,
-        },
-        {
-          rowId: 'TXN002',
-          postedDate: '2024-01-03',
-          description: 'CHECK #1001 - Office Supplies & Equipment - Staples Business',
-          debit: '250.00',
-          credit: null,
-          runningBalance: '6250.00',
-          normalizedDate: '2024-01-03',
-          normalizedAmount: -250.0,
-          normalizedBalance: 6250.0,
-          isEdited: false,
-        },
-        {
-          rowId: 'TXN003',
-          postedDate: '2024-01-05',
-          description:
-            'ACH TRANSFER OUT - Monthly Payroll Distribution - Employee Salaries & Benefits - Batch ID: PAY-20240105',
-          debit: '3000.00',
-          credit: null,
-          runningBalance: '3250.00',
-          normalizedDate: '2024-01-05',
-          normalizedAmount: -3000.0,
-          normalizedBalance: 3250.0,
-          isEdited: false,
-        },
-        {
-          rowId: 'TXN004',
-          postedDate: '2024-01-08',
-          description:
-            'WIRE TRANSFER IN - Client Retainer Payment - XYZ Consulting LLC - Invoice #INV-2024-002',
-          debit: null,
-          credit: '2500.00',
-          runningBalance: '5750.00',
-          normalizedDate: '2024-01-08',
-          normalizedAmount: 2500.0,
-          normalizedBalance: 5750.0,
-          isEdited: false,
-        },
-        {
-          rowId: 'TXN005',
-          postedDate: '2024-01-10',
-          description: 'BANK FEE - Monthly Service Charge & Wire Transfer Fee',
-          debit: '25.00',
-          credit: null,
-          runningBalance: '5725.00',
-          normalizedDate: '2024-01-10',
-          normalizedAmount: -25.0,
-          normalizedBalance: 5725.0,
-          isEdited: false,
-        },
-        {
-          rowId: 'TXN006',
-          postedDate: '2024-01-15',
-          description:
-            'DEPOSIT - Refund for Returned Equipment - Original Purchase Order #PO-5600 - Vendor Credit',
-          debit: null,
-          credit: '347.50',
-          runningBalance: '6072.50',
-          normalizedDate: '2024-01-15',
-          normalizedAmount: 347.5,
-          normalizedBalance: 6072.5,
-          isEdited: false,
-        },
-        {
-          rowId: 'TXN007',
-          postedDate: '2024-01-20',
-          description:
-            'CHECK #1002 - Quarterly Insurance Premium - General Liability & Property Coverage - Policy #POL-2024-789',
-          debit: '225.00',
-          credit: null,
-          runningBalance: '5847.50',
-          normalizedDate: '2024-01-20',
-          normalizedAmount: -225.0,
-          normalizedBalance: 5847.5,
-          isEdited: false,
-        },
-      ]
+      const result = await response.json()
 
-      setMetadata(sampleMetadata)
-      setTransactions(sampleTransactions)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to parse PDF')
+      }
+
+      // Extract parsed data from response
+      const parsedMetadata = result.metadata
+      const parsedTransactions = result.transactions
+
+      // Check if we got any transactions
+      if (!parsedTransactions || parsedTransactions.length === 0) {
+        setError('No transactions found in PDF. Please ensure the PDF contains a valid bank statement.')
+        setIsLoading(false)
+        return
+      }
+
+      setMetadata(parsedMetadata)
+      setTransactions(parsedTransactions)
       setIsDocumentValid(true)
 
       // PROMPT 4: NORMALIZATION & PROMPT 5: RECONCILIATION
-      const { normalized } = normalizeTransactions(sampleTransactions)
-      const reconciliation = reconcileStatement(sampleMetadata, normalized)
+      const { normalized } = normalizeTransactions(parsedTransactions)
+      const reconciliation = reconcileStatement(parsedMetadata, normalized)
       setValidationResult(reconciliation)
+
+      // Log validation results for debugging
+      console.log('Document validation:', result.validation.documentGate)
+      console.log('Reconciliation result:', reconciliation)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      setError(errorMessage)
+      console.error('Parse error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -284,15 +213,44 @@ export default function Home() {
         <div className="space-y-2">
           <h1 className="text-4xl font-bold text-slate-900">SmartSheet</h1>
           <p className="text-lg text-slate-600">
-            Professional monthly statement validation, editing, and export
+            Professional bank statement validation, editing, and export
           </p>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Card className="border-red-200 bg-red-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-red-900">Error Parsing PDF</h3>
+                <p className="text-sm text-red-800 mt-1">{error}</p>
+                <p className="text-xs text-red-700 mt-2">
+                  Please ensure your PDF is a valid bank statement with readable text. Try uploading a different file.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Document Gate */}
         {!isDocumentValid ? (
           <DocumentGate onFileUpload={handleFileUpload} isLoading={isLoading} />
         ) : (
           <>
+            {/* Success Message */}
+            <Card className="border-green-200 bg-green-50 p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-green-900">PDF Parsed Successfully</h3>
+                  <p className="text-sm text-green-800">
+                    {transactions.length} transactions extracted and validated
+                  </p>
+                </div>
+              </div>
+            </Card>
+
             {/* Metadata Display */}
             {metadata && <MetadataDisplay metadata={metadata} />}
 
@@ -332,6 +290,7 @@ export default function Home() {
                   setMetadata(null)
                   setTransactions([])
                   setValidationResult(null)
+                  setError(null)
                 }}
               >
                 Load Different Statement

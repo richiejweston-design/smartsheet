@@ -12,9 +12,9 @@ export interface Transaction {
   credit: string | null
   runningBalance: string | null
   // Normalized values after processing
-  normalizedDate?: string
-  normalizedAmount?: number
-  normalizedBalance?: number
+  normalizedDate?: string | null
+  normalizedAmount?: number | null
+  normalizedBalance?: number | null
   // Original values before editing
   originalPostedDate?: string | null
   originalDescription?: string

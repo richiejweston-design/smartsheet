@@ -8,33 +8,29 @@
  ○ Compiling / ...
  ✓ Compiled / in 8.2s
  GET / 200 in 9050ms
- ⚠ Cross origin request detected from bookkeeping-parser.lindy.site to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
-Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
- GET / 200 in 327ms
- GET / 200 in 323ms
- GET / 200 in 269ms
- GET / 200 in 298ms
- GET / 200 in 346ms
- ✓ Compiled in 141ms
- ✓ Compiled / in 46ms
- GET / 200 in 334ms
- GET / 200 in 176ms
- ○ Compiling /favicon.ico ...
- ✓ Compiled /favicon.ico in 563ms
- GET /favicon.ico?favicon.bf3c9292.ico 200 in 918ms
- GET / 200 in 178ms
- GET / 200 in 141ms
- GET / 200 in 3081ms
- ✓ Compiled in 140ms
- ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4koj11mxd1n'] {
-  errno: -2,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4koj11mxd1n'
+ ⚠ Cross origin
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to /tmp/next-panic-a670f6e350960b548379e899c39fcb47.log.
+
+To help make Turbopack better, report this error by clicking here: https://github.com/vercel/next.js/discussions/new?category=turbopack-error-report&title=Turbopack%20Error%3A%20Next.js%20package%20not%20found&body=Turbopack%20version%3A%20%6057992a6e%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0ATurbopack%20Error%3A%20Next.js%20package%20not%20found%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+Error [TurbopackInternalError]: Next.js package not found
+
+Debug info:
+- Execution of get_entrypoints_with_issues_operation failed
+- Execution of EntrypointsOperation::new failed
+- Execution of Project::entrypoints failed
+- Execution of AppProject::routes failed
+- Execution of directory_tree_to_entrypoints_internal failed
+- Execution of directory_tree_to_loader_tree failed
+- Execution of get_next_package failed
+- Next.js package not found
+    at <unknown> (TurbopackInternalError: Next.js package not found) {
+  location: undefined
 }
- ○ Compiling /_error ...
- ✓ Compiled /_error in 2.1s
- ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.ocr5tw00mg'] {
+[?25h
+Manifest.js.tmp.ocr5tw00mg'] {
   errno: -2,
   code: 'ENOENT',
   syscall: 'open',
@@ -58,3 +54,115 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
   syscall: 'open',
   path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.fsqu1qxkakg'
 }
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.gsra3ifzzls'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.gsra3ifzzls'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.d1o2syy5hul'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.d1o2syy5hul'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.gsra3ifzzls'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.gsra3ifzzls'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.v80nju56fu8'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.v80nju56fu8'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.mbf69x6epl'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.mbf69x6epl'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4iykhxtysk9'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4iykhxtysk9'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.2hb5r9o6uf1'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.2hb5r9o6uf1'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4iykhxtysk9'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4iykhxtysk9'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.drc14l0vplg'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.drc14l0vplg'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.ye28jobbpf'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.ye28jobbpf'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.86tnol6dn5i'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.86tnol6dn5i'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.xpz5y9708dc'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.xpz5y9708dc'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.86tnol6dn5i'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.86tnol6dn5i'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.6a5rz6w19d2'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.6a5rz6w19d2'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.txdvbwoduw'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.txdvbwoduw'
+}
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to /tmp/next-panic-d03961fd02ca91dc98ccf66032ebe1e0.log.
+
+To help make Turbopack better, report this error by clicking here: https://github.com/vercel/next.js/discussions/new?category=turbopack-error-report&title=Turbopack%20Error%3A%20Next.js%20package%20not%20found&body=Turbopack%20version%3A%20%6057992a6e%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0ATurbopack%20Error%3A%20Next.js%20package%20not%20found%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+Error [TurbopackInternalError]: Next.js package not found
+
+Debug info:
+- Execution of get_entrypoints_with_issues_operation failed
+- Execution of EntrypointsOperation::new failed
+- Execution of Project::entrypoints failed
+- Execution of AppProject::routes failed
+- Execution of directory_tree_to_entrypoints_internal failed
+- Execution of directory_tree_to_loader_tree failed
+- Execution of get_next_package failed
+- Next.js package not found
+    at <unknown> (TurbopackInternalError: Next.js package not found) {
+  location: undefined
+}
+[?25h

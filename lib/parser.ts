@@ -1,6 +1,7 @@
 /**
  * Core parser logic for bookkeeping statements
  * Implements all 10 prompts from the specification
+ * Now with REAL PDF parsing using unpdf library
  * 
  * CRITICAL RULES:
  * - Never invent data
@@ -33,6 +34,191 @@ function simpleHash(input: string): string {
     hash = hash & hash // Convert to 32bit integer
   }
   return Math.abs(hash).toString(16)
+}
+
+/**
+ * Extract text from PDF using unpdf library
+ * This is called from the API route to parse uploaded PDFs
+ * 
+ * @param pdfBuffer - Buffer containing PDF file data
+ * @returns Extracted text from PDF
+ */
+export async function extractPDFText(pdfBuffer: Buffer): Promise<string> {
+  try {
+    // Import unpdf dynamically (server-side only)
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    
+    // Convert Buffer to Uint8Array (required by unpdf)
+    const uint8Array = new Uint8Array(pdfBuffer)
+    
+    // Get PDF document proxy
+    const pdf = await getDocumentProxy(uint8Array)
+    
+    // Extract text from PDF with merged pages
+    const { text } = await extractText(pdf, { mergePages: true })
+    
+    return text || ''
+  } catch (error) {
+    console.error('PDF extraction error:', error)
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+/**
+ * Parse bank statement text using regex patterns
+ * Handles common bank statement formats
+ * 
+ * @param pdfText - Extracted text from PDF
+ * @returns Parsed metadata and transactions
+ */
+export function parseStatementText(pdfText: string): {
+  metadata: StatementMetadata
+  transactions: Transaction[]
+} {
+  const metadata: StatementMetadata = {
+    financialInstitution: null,
+    accountName: null,
+    accountNumberLastFour: null,
+    accountType: null,
+    currency: null,
+    statementStartDate: null,
+    statementEndDate: null,
+    openingBalance: null,
+    closingBalance: null,
+    totalDebits: null,
+    totalCredits: null,
+  }
+
+  const transactions: Transaction[] = []
+
+  // Split text into lines for processing
+  const lines = pdfText.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+
+  // Extract metadata using regex patterns
+  // Look for common patterns in bank statements
+  
+  // Financial institution (look for bank names)
+  const bankMatch = pdfText.match(/(?:Bank|Credit Union|Financial|Institution)[\s:]*([^\n]+)/i)
+  if (bankMatch) {
+    metadata.financialInstitution = bankMatch[1].trim()
+  }
+
+  // Account name/type
+  const accountMatch = pdfText.match(/(?:Account|Checking|Savings)[\s:]*([^\n]+)/i)
+  if (accountMatch) {
+    metadata.accountName = accountMatch[1].trim()
+  }
+
+  // Account number (last 4 digits)
+  const accountNumMatch = pdfText.match(/(?:Account\s*(?:Number|#)|Acct)[\s:]*\*+(\d{4})/i)
+  if (accountNumMatch) {
+    metadata.accountNumberLastFour = accountNumMatch[1]
+  }
+
+  // Statement dates
+  const dateRangeMatch = pdfText.match(/(?:Statement|Period)[\s:]*([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s*(?:to|-|through)\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i)
+  if (dateRangeMatch) {
+    metadata.statementStartDate = parseDateString(dateRangeMatch[1])
+    metadata.statementEndDate = parseDateString(dateRangeMatch[2])
+  }
+
+  // Opening balance
+  const openingMatch = pdfText.match(/(?:Opening|Beginning)\s+(?:Balance|Amount)[\s:]*\$?([\d,]+\.?\d*)/i)
+  if (openingMatch) {
+    metadata.openingBalance = openingMatch[1].replace(/,/g, '')
+    metadata.normalizedOpeningBalance = parseFloat(metadata.openingBalance)
+  }
+
+  // Closing balance
+  const closingMatch = pdfText.match(/(?:Closing|Ending|Final)\s+(?:Balance|Amount)[\s:]*\$?([\d,]+\.?\d*)/i)
+  if (closingMatch) {
+    metadata.closingBalance = closingMatch[1].replace(/,/g, '')
+    metadata.normalizedClosingBalance = parseFloat(metadata.closingBalance)
+  }
+
+  // Currency (default to USD if not found)
+  const currencyMatch = pdfText.match(/(?:Currency|USD|GBP|EUR|CAD|AUD)/i)
+  metadata.currency = currencyMatch ? currencyMatch[0].toUpperCase() : 'USD'
+
+  // Extract transactions using regex patterns
+  // Look for common transaction patterns: Date | Description | Amount | Balance
+  // Pattern: MM/DD/YYYY or DD/MM/YYYY followed by description and amounts
+  
+  const transactionPattern = /(\d{1,2}\/\d{1,2}\/\d{4})\s+([^\d\n]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/gm
+  let match
+  let rowId = 1
+
+  while ((match = transactionPattern.exec(pdfText)) !== null) {
+    const [, dateStr, description, amount1, amount2] = match
+
+    // Determine if amount1 is debit or credit based on context
+    // Typically: debit (withdrawal) | credit (deposit)
+    const tx: Transaction = {
+      rowId: `row_${rowId}`,
+      postedDate: parseDateString(dateStr),
+      description: description.trim(),
+      debit: null,
+      credit: null,
+      runningBalance: null,
+      normalizedDate: null,
+      normalizedAmount: null,
+      normalizedBalance: null,
+      isEdited: false,
+      editedFields: [],
+    }
+
+    // Simple heuristic: if description contains keywords, classify as debit or credit
+    const descLower = description.toLowerCase()
+    if (descLower.includes('withdrawal') || descLower.includes('debit') || descLower.includes('payment')) {
+      tx.debit = amount1
+    } else if (descLower.includes('deposit') || descLower.includes('credit') || descLower.includes('transfer in')) {
+      tx.credit = amount1
+    } else {
+      // Default: assume first amount is debit, second is credit
+      tx.debit = amount1
+    }
+
+    // Running balance is typically the last amount
+    tx.runningBalance = amount2
+
+    transactions.push(tx)
+    rowId++
+  }
+
+  // If no transactions found with pattern, return empty array
+  // User will need to manually add or upload a different format
+
+  return { metadata, transactions }
+}
+
+/**
+ * Parse date string in various formats
+ * Handles: MM/DD/YYYY, DD/MM/YYYY, Month DD, YYYY, etc.
+ */
+function parseDateString(dateStr: string): string | null {
+  if (!dateStr) return null
+
+  try {
+    // Try parsing as MM/DD/YYYY or DD/MM/YYYY
+    const slashMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+    if (slashMatch) {
+      const [, month, day, year] = slashMatch
+      // Assume MM/DD/YYYY format (US standard)
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+
+    // Try parsing as "Month DD, YYYY"
+    const monthMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/)
+    if (monthMatch) {
+      const [, monthName, day, year] = monthMatch
+      const monthNum = new Date(`${monthName} 1, 2000`).getMonth() + 1
+      return `${year}-${monthNum.toString().padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+
+    return null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -103,21 +289,8 @@ export function validateDocument(metadata: StatementMetadata): {
  * Preserves values exactly as they appear
  */
 export function extractMetadata(pdfText: string): StatementMetadata {
-  // This is a simplified extraction - in production, would use PDF parsing library
-  // For demo purposes, returns template structure
-  return {
-    financialInstitution: null,
-    accountName: null,
-    accountNumberLastFour: null,
-    accountType: null,
-    currency: null,
-    statementStartDate: null,
-    statementEndDate: null,
-    openingBalance: null,
-    closingBalance: null,
-    totalDebits: null,
-    totalCredits: null,
-  }
+  const { metadata } = parseStatementText(pdfText)
+  return metadata
 }
 
 /**
@@ -141,9 +314,8 @@ export function extractMetadata(pdfText: string): StatementMetadata {
  * - PRESERVE FULL DESCRIPTIONS EXACTLY AS SHOWN
  */
 export function extractTransactions(pdfText: string): Transaction[] {
-  // This is a simplified extraction - in production, would parse PDF properly
-  // Returns empty array for demo
-  return []
+  const { transactions } = parseStatementText(pdfText)
+  return transactions
 }
 
 /**
@@ -272,7 +444,7 @@ export function reconcileStatement(
   let expectedBalance = openingBalance
   for (const tx of transactions) {
     expectedBalance += tx.normalizedAmount || 0
-    if (tx.normalizedBalance !== undefined) {
+    if (tx.normalizedBalance !== undefined && tx.normalizedBalance !== null) {
       const diff = Math.abs(expectedBalance - tx.normalizedBalance)
       if (diff > 0.01) {
         flags.push({
