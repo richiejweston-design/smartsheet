@@ -1,0 +1,60 @@
+
+> bookkeeping-parser@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+   ▲ Next.js 15.5.6 (Turbopack)
+   - Local:        http://localhost:3001
+ ○ Compiling / ...
+ ✓ Compiled / in 8.2s
+ GET / 200 in 9050ms
+ ⚠ Cross origin request detected from bookkeeping-parser.lindy.site to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ GET / 200 in 327ms
+ GET / 200 in 323ms
+ GET / 200 in 269ms
+ GET / 200 in 298ms
+ GET / 200 in 346ms
+ ✓ Compiled in 141ms
+ ✓ Compiled / in 46ms
+ GET / 200 in 334ms
+ GET / 200 in 176ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 563ms
+ GET /favicon.ico?favicon.bf3c9292.ico 200 in 918ms
+ GET / 200 in 178ms
+ GET / 200 in 141ms
+ GET / 200 in 3081ms
+ ✓ Compiled in 140ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4koj11mxd1n'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4koj11mxd1n'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 2.1s
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.ocr5tw00mg'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.ocr5tw00mg'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4koj11mxd1n'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.4koj11mxd1n'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.5nn2jeovb1'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.5nn2jeovb1'
+}
+[Error: ENOENT: no such file or directory, open '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.fsqu1qxkakg'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/code/bookkeeping-parser/.next/static/development/_buildManifest.js.tmp.fsqu1qxkakg'
+}
