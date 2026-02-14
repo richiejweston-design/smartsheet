@@ -140,26 +140,122 @@ export function parseStatementText(pdfText: string): {
   const currencyMatch = pdfText.match(/(?:Currency|USD|GBP|EUR|CAD|AUD)/i)
   metadata.currency = currencyMatch ? currencyMatch[0].toUpperCase() : 'USD'
 
-  // Extract transactions using regex patterns
-  // Look for common transaction patterns: Date | Description | Amount | Balance
-  // Pattern: MM/DD/YYYY or DD/MM/YYYY followed by description and amounts
-  
-  const transactionPattern = /(\d{1,2}\/\d{1,2}\/\d{4})\s+([^\d\n]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/gm
-  let match
+  // Extract transactions (multi-format, line-based)
+  // Why line-based? PDF text extraction frequently wraps descriptions and shifts columns.
+  // A single global regex misses many rows, so we instead:
+  // 1) Treat any line that starts with a date as a potential transaction row.
+  // 2) Append continuation lines until the next dated row.
+  // 3) Parse trailing amount/balance tokens from the right.
+
+  // Common date formats at the *start* of a transaction row.
+  // Examples: 01/31/2025, 1/31/25, 01/31, 31-01-2025, 31 Jan 2025
+  const dateStartRegex = /^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?|\d{1,2}\s+[A-Za-z]{3,9}(?:\s+\d{2,4})?)\b/
+  const headerRegex = /^(date|posted\s+date|transaction\s+date)\b/i
+
+  // Money token detector (permissive by design; different banks render amounts differently).
+  // Accepts: $1,234.56  -12.34  (12.34)  12.34CR  12.34DR  12.34-  £12.34
+  function isAmountToken(token: string): boolean {
+    const t = token.trim()
+    if (!t) return false
+    const cleaned = t.replace(/[;,]$/, '')
+    return /^[£$€]?-?\(?\d{1,3}(?:,\d{3})*(?:\.\d{2})?\)?-?(?:CR|DR)?$/i.test(cleaned)
+  }
+
+  // Split the post-date text into a description portion + trailing amount-ish tokens.
+  function splitDescriptionAndAmounts(textAfterDate: string): { descriptionText: string; amountTokens: string[] } {
+    const parts = textAfterDate.trim().split(/\s+/).filter(Boolean)
+    const amountTokensReversed: string[] = []
+
+    // Pull up to 3 amount-like tokens from the end (typically amount + balance, or debit+credit+balance).
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const token = parts[i]
+      if (isAmountToken(token) && amountTokensReversed.length < 3) {
+        amountTokensReversed.push(token)
+      } else {
+        break
+      }
+    }
+
+    const amountTokens = amountTokensReversed.reverse()
+    const descriptionParts = parts.slice(0, Math.max(0, parts.length - amountTokens.length))
+
+    return {
+      descriptionText: descriptionParts.join(' ').trim(),
+      amountTokens,
+    }
+  }
+
+  // 1) Build transaction blocks (a dated line + its continuation lines)
+  const blocks: { dateRaw: string; textAfterDate: string }[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line || headerRegex.test(line)) continue
+
+    // Ignore common statement period lines that contain dates but are not transactions.
+    if (/statements+(period|from)/i.test(line) && /(to|through|-)/i.test(line)) continue
+
+    const m = line.match(dateStartRegex)
+    if (!m) continue
+
+    const dateRaw = m[0]
+    let remainder = line.slice(dateRaw.length).trim()
+
+    let j = i + 1
+    while (j < lines.length) {
+      const next = lines[j]
+      if (!next) { j++; continue }
+      if (headerRegex.test(next)) { j++; continue }
+      if (dateStartRegex.test(next)) break
+
+      // Keep continuation lines to avoid truncating descriptions.
+      remainder += ' ' + next
+      j++
+    }
+
+    blocks.push({ dateRaw, textAfterDate: remainder.trim() })
+    i = j - 1
+  }
+
+  // 2) Convert blocks to Transaction rows
   let rowId = 1
+  for (const b of blocks) {
+    const { descriptionText, amountTokens } = splitDescriptionAndAmounts(b.textAfterDate)
 
-  while ((match = transactionPattern.exec(pdfText)) !== null) {
-    const [, dateStr, description, amount1, amount2] = match
+    let runningBalance: string | null = null
+    let debit: string | null = null
+    let credit: string | null = null
 
-    // Determine if amount1 is debit or credit based on context
-    // Typically: debit (withdrawal) | credit (deposit)
+    if (amountTokens.length >= 2) {
+      runningBalance = amountTokens[amountTokens.length - 1]
+      const amountCols = amountTokens.slice(0, -1)
+
+      if (amountCols.length === 1) {
+        // Single amount column + balance (common on simpler statements)
+        debit = amountCols[0]
+      } else if (amountCols.length === 2) {
+        // Likely debit + credit columns + balance
+        debit = amountCols[0]
+        credit = amountCols[1]
+      } else {
+        // If there are more than 2 amount cols, keep the last as balance and the rest ambiguous.
+        // We preserve the left-most two as debit/credit and drop the extra into the description to avoid inventing fields.
+        debit = amountCols[0] || null
+        credit = amountCols[1] || null
+      }
+    } else if (amountTokens.length === 1) {
+      // Amount but no balance column
+      debit = amountTokens[0]
+    }
+
     const tx: Transaction = {
-      rowId: `row_${rowId}`,
-      postedDate: parseDateString(dateStr),
-      description: description.trim(),
-      debit: null,
-      credit: null,
-      runningBalance: null,
+      rowId: 'row_' + rowId,
+      // Preserve what appears on the statement (raw). Normalized date is computed later.
+      postedDate: b.dateRaw,
+      // Preserve description text as extracted (no rewriting; only whitespace normalization due to PDF wrapping).
+      description: descriptionText || '',
+      debit,
+      credit,
+      runningBalance,
       normalizedDate: null,
       normalizedAmount: null,
       normalizedBalance: null,
@@ -167,23 +263,18 @@ export function parseStatementText(pdfText: string): {
       editedFields: [],
     }
 
-    // Simple heuristic: if description contains keywords, classify as debit or credit
-    const descLower = description.toLowerCase()
-    if (descLower.includes('withdrawal') || descLower.includes('debit') || descLower.includes('payment')) {
-      tx.debit = amount1
-    } else if (descLower.includes('deposit') || descLower.includes('credit') || descLower.includes('transfer in')) {
-      tx.credit = amount1
-    } else {
-      // Default: assume first amount is debit, second is credit
-      tx.debit = amount1
+    const hasAnyData =
+      (tx.description && tx.description.trim().length > 0) ||
+      tx.debit !== null ||
+      tx.credit !== null ||
+      tx.runningBalance !== null
+
+    if (hasAnyData) {
+      transactions.push(tx)
+      rowId++
     }
-
-    // Running balance is typically the last amount
-    tx.runningBalance = amount2
-
-    transactions.push(tx)
-    rowId++
   }
+
 
   // If no transactions found with pattern, return empty array
   // User will need to manually add or upload a different format
@@ -199,20 +290,31 @@ function parseDateString(dateStr: string): string | null {
   if (!dateStr) return null
 
   try {
-    // Try parsing as MM/DD/YYYY or DD/MM/YYYY
-    const slashMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+    const trimmed = dateStr.trim()
+
+    // MM/DD/YYYY or MM/DD/YY
+    const slashMatch = trimmed.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/) 
     if (slashMatch) {
       const [, month, day, year] = slashMatch
-      // Assume MM/DD/YYYY format (US standard)
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      const yyyy = year.length === 2 ? `20${year}` : year
+      return `${yyyy}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
     }
 
-    // Try parsing as "Month DD, YYYY"
-    const monthMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/)
+    // MM/DD (no year) -> assume current year
+    const slashNoYearMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})$/)
+    if (slashNoYearMatch) {
+      const [, month, day] = slashNoYearMatch
+      const yyyy = new Date().getFullYear().toString()
+      return `${yyyy}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+
+    // Month DD, YYYY (or Month DD, YY)
+    const monthMatch = trimmed.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{2,4})/)
     if (monthMatch) {
       const [, monthName, day, year] = monthMatch
       const monthNum = new Date(`${monthName} 1, 2000`).getMonth() + 1
-      return `${year}-${monthNum.toString().padStart(2, '0')}-${day.padStart(2, '0')}`
+      const yyyy = year.length === 2 ? `20${year}` : year
+      return `${yyyy}-${monthNum.toString().padStart(2, '0')}-${day.padStart(2, '0')}`
     }
 
     return null
@@ -220,6 +322,8 @@ function parseDateString(dateStr: string): string | null {
     return null
   }
 }
+
+
 
 /**
  * PROMPT 1: DOCUMENT GATE
